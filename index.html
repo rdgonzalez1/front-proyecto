@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Panel de Fábrica — Grupo 3</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#0b0c10; --card:#121318; --muted:#a0a4ad; --fg:#e8eaed; --accent:#4f8cff; --ok:#30c48d; --warn:#ffb84f; --err:#ff5c5c; --border:#1f2230;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:linear-gradient(180deg,#0a0b10 0%,#0d0f16 100%);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial,sans-serif;color:var(--fg)}
+    .wrap{max-width:1200px;margin:0 auto;padding:24px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+    .brand{display:flex;align-items:center;gap:10px}
+    .brand .dot{width:10px;height:10px;border-radius:999px;background:var(--ok);box-shadow:0 0 0 3px rgba(48,196,141,.15)}
+    h1{font-size:22px;margin:0}
+    .subtitle{color:var(--muted);font-size:13px}
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+    .card{background:rgba(18,19,24,.7);backdrop-filter:saturate(120%) blur(8px);border:1px solid var(--border);border-radius:16px;padding:16px}
+    .kpi{display:flex;flex-direction:column;gap:2px}
+    .kpi .label{color:var(--muted);font-size:12px}
+    .kpi .value{font-size:24px;font-weight:700}
+    .kpi .delta{font-size:12px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:14px}
+    th{color:var(--muted);text-align:left;font-weight:600}
+    tr:hover td{background:rgba(255,255,255,.02)}
+    .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;font-size:12px;border:1px solid var(--border)}
+    .pill.ok{color:var(--ok);border-color:rgba(48,196,141,.35);background:rgba(48,196,141,.08)}
+    .pill.warn{color:var(--warn);border-color:rgba(255,184,79,.35);background:rgba(255,184,79,.08)}
+    .pill.err{color:var(--err);border-color:rgba(255,92,92,.35);background:rgba(255,92,92,.08)}
+    .row{display:flex;align-items:center;gap:10px}
+    .bar{height:8px;border-radius:999px;background:#1f2230;overflow:hidden}
+    .bar > span{display:block;height:100%;background:var(--accent)}
+    .toolbar{display:flex;align-items:center;gap:8px}
+    .search{flex:1;min-width:200px}
+    input[type="search"]{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:#0f1117;color:var(--fg)}
+    .btn{padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:#0f1117;color:var(--fg);cursor:pointer}
+    .btn:hover{background:#12151e}
+    .muted{color:var(--muted)}
+    .right{margin-left:auto}
+    .footer{margin-top:14px;color:var(--muted);font-size:12px}
+    .empty{color:var(--muted);text-align:center;padding:28px 10px}
+    dialog{border:1px solid var(--border);border-radius:16px;background:#0f1117;color:var(--fg);padding:0;max-width:720px;width:90%}
+    dialog header{padding:14px 16px;border-bottom:1px solid var(--border)}
+    dialog .content{padding:16px}
+    dialog footer{padding:14px 16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end}
+    code{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;font-size:12px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <div class="dot" id="health-dot"></div>
+        <div>
+          <h1>Panel de Fábrica — Grupo 3</h1>
+          <div class="subtitle">Estado en vivo del sistema · <span id="timestamp">—</span></div>
+        </div>
+      </div>
+      <div class="toolbar">
+        <button class="btn" id="refreshBtn">Actualizar</button>
+      </div>
+    </header>
+
+    <!-- KPIs -->
+    <section class="grid" style="margin-bottom:16px">
+      <div class="card" style="grid-column: span 3">
+        <div class="kpi"><div class="label">SKUs totales</div><div class="value" id="kpi-skus">—</div></div>
+      </div>
+      <div class="card" style="grid-column: span 3">
+        <div class="kpi"><div class="label">Unidades en stock</div><div class="value" id="kpi-units">—</div></div>
+      </div>
+      <div class="card" style="grid-column: span 3">
+        <div class="kpi"><div class="label">Pedidos (última hora)</div><div class="value" id="kpi-orders-hour">—</div><div class="delta muted" id="kpi-orders-note"></div></div>
+      </div>
+      <div class="card" style="grid-column: span 3">
+        <div class="kpi"><div class="label">Estado API</div><div class="value"><span id="health-pill" class="pill ok">OK</span></div></div>
+      </div>
+    </section>
+
+    <!-- Métricas especiales -->
+    <section class="grid" style="margin-bottom:16px">
+      <div class="card" style="grid-column: span 6">
+        <h3 style="margin:0 0 8px">Espacio utilizado por sector</h3>
+        <div id="space-utilization" class="empty">A la espera del endpoint <code>/api/metrics/spaces</code>.</div>
+      </div>
+      <div class="card" style="grid-column: span 6">
+        <h3 style="margin:0 0 8px">Productos que vencerán en &lt; 3 horas</h3>
+        <div id="expiring-soon" class="empty">A la espera del endpoint <code>/api/metrics/expiring_soon</code>.</div>
+      </div>
+    </section>
+
+    <!-- Stock por SKU -->
+    <section class="card" style="margin-bottom:16px">
+      <div class="row" style="justify-content:space-between;margin-bottom:8px">
+        <h3 style="margin:0">Stock por SKU</h3>
+        <div class="search" style="max-width:340px"><input id="stockSearch" type="search" placeholder="Buscar por SKU o nombre…"></div>
+      </div>
+      <div class="table-wrap">
+        <table id="stockTable">
+          <thead><tr><th>SKU</th><th>Nombre</th><th style="width:180px">Cantidad</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Pedidos -->
+    <section class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:8px">
+        <h3 style="margin:0">Pedidos recibidos</h3>
+        <div class="toolbar">
+          <select id="statusFilter" class="btn">
+            <option value="">Todos</option>
+            <option value="aceptada">Aceptada</option>
+            <option value="rechazada">Rechazada</option>
+            <option value="pendiente">Pendiente</option>
+          </select>
+        </div>
+      </div>
+      <table id="ordersTable">
+        <thead>
+          <tr>
+            <th>Id de pedido</th>
+            <th>Cliente</th>
+            <th>SKU</th>
+            <th style="width:120px">Cantidad</th>
+            <th>Estado</th>
+            <th style="width:120px">Recibido</th>
+            <th style="width:80px">Ver más</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <div class="footer">Fuente de datos: <code>/api/health</code>, <code>/api/stock</code>, <code>/api/orders</code>. Refresco automático cada 15s.</div>
+  </div>
+
+  <!-- Modal detalle de pedido -->
+  <dialog id="orderDialog">
+    <header>
+      <h3 style="margin:0">Detalle del pedido</h3>
+    </header>
+    <div class="content">
+      <pre id="orderJson" style="white-space:pre-wrap"></pre>
+    </div>
+    <footer>
+      <button id="closeDialog" class="btn">Cerrar</button>
+    </footer>
+  </dialog>
+
+  <script>
+    // === Configuración ===
+    // Si tu backend corre bajo el mismo dominio, puedes dejar API_BASE = "" (uso de rutas relativas).
+    // Si corre en otro host/puerto, setea por ejemplo: const API_BASE = "http://127.0.0.1:8000";
+    const API_BASE = "";
+
+    const fmtDate = (s) => {
+      if (!s) return "—";
+      try { return new Date(s).toLocaleString(); } catch { return String(s); }
+    };
+
+    const state = {
+      stock: [],
+      orders: [],
+      lastRefresh: null,
+    };
+
+    async function getJSON(path){
+      const url = API_BASE + path;
+      const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
+      if(!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+      return await r.json();
+    }
+
+    async function fetchHealth(){
+      try {
+        const data = await getJSON('/api/health');
+        document.getElementById('health-dot').style.background = '#30c48d';
+        document.getElementById('health-pill').className = 'pill ok';
+        document.getElementById('health-pill').textContent = 'OK';
+        return data;
+      } catch (e) {
+        document.getElementById('health-dot').style.background = '#ff5c5c';
+        document.getElementById('health-pill').className = 'pill err';
+        document.getElementById('health-pill').textContent = 'ERROR';
+        return null;
+      }
+    }
+
+    async function fetchStock(){
+      try {
+        const data = await getJSON('/api/stock');
+        state.stock = (data.products || []).map(p=>({
+          sku: p.sku, name: p.name ?? '', quantity: Number(p.quantity ?? 0)
+        }));
+        renderStock();
+        // KPIs
+        const totalUnits = state.stock.reduce((a,b)=>a + (b.quantity||0), 0);
+        document.getElementById('kpi-skus').textContent = String(state.stock.length);
+        document.getElementById('kpi-units').textContent = String(totalUnits);
+      } catch (e) {
+        state.stock = [];
+        renderStock();
+      }
+    }
+
+    async function fetchOrders(){
+      try {
+        const data = await getJSON('/api/orders');
+        state.orders = (data.orders || []).map(o=>({
+          order_id: o.order_id,
+          client: o.client,
+          sku: o.sku,
+          quantity: Number(o.quantity ?? 0),
+          status: o.status ?? '—',
+          created_at: o.created_at ?? null,
+          _raw: o
+        }));
+        renderOrders();
+        // KPI pedidos última hora (si hay created_at)
+        const now = Date.now();
+        const lastHour = now - 60*60*1000;
+        const withTs = state.orders.filter(o=> o.created_at && !isNaN(Date.parse(o.created_at)) );
+        if(withTs.length){
+          const count = withTs.filter(o=> Date.parse(o.created_at) >= lastHour ).length;
+          document.getElementById('kpi-orders-hour').textContent = String(count);
+          document.getElementById('kpi-orders-note').textContent = '';
+        } else {
+          document.getElementById('kpi-orders-hour').textContent = '—';
+          document.getElementById('kpi-orders-note').textContent = 'Falta campo created_at en /api/orders para calcular.';
+        }
+      } catch (e) {
+        state.orders = [];
+        renderOrders();
+        document.getElementById('kpi-orders-hour').textContent = '—';
+        document.getElementById('kpi-orders-note').textContent = 'No se pudieron cargar pedidos.';
+      }
+    }
+
+    function renderStock(){
+      const q = document.getElementById('stockSearch').value?.toLowerCase() || '';
+      const tbody = document.querySelector('#stockTable tbody');
+      tbody.innerHTML = '';
+      const filtered = state.stock.filter(p => p.sku?.toLowerCase().includes(q) || p.name?.toLowerCase().includes(q));
+      if(!filtered.length){
+        const tr = document.createElement('tr');
+        const td = document.createElement('td'); td.colSpan = 4; td.className = 'empty'; td.textContent = 'Sin datos';
+        tr.appendChild(td); tbody.appendChild(tr); return;
+      }
+      const maxQty = Math.max(1, ...filtered.map(p=>p.quantity||0));
+      for(const p of filtered){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><code>${p.sku ?? ''}</code></td>
+          <td>${p.name ?? ''}</td>
+          <td>${p.quantity ?? 0}</td>
+          <td><div class='bar'><span style='width:${(p.quantity||0)/maxQty*100}%'></span></div></td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    function renderOrders(){
+      const filter = document.getElementById('statusFilter').value;
+      const tbody = document.querySelector('#ordersTable tbody');
+      tbody.innerHTML = '';
+      const sorted = [...state.orders].sort((a,b) => {
+        const ta = a.created_at ? Date.parse(a.created_at) : 0;
+        const tb = b.created_at ? Date.parse(b.created_at) : 0;
+        return tb - ta; // más reciente primero
+      });
+      const rows = filter ? sorted.filter(o => (o.status||'').toLowerCase() === filter) : sorted;
+      if(!rows.length){
+        const tr = document.createElement('tr');
+        const td = document.createElement('td'); td.colSpan = 7; td.className = 'empty'; td.textContent = 'Sin pedidos';
+        tr.appendChild(td); tbody.appendChild(tr); return;
+      }
+      for(const o of rows){
+        const pillCls = o.status === 'aceptada' ? 'pill ok' : (o.status === 'rechazada' ? 'pill err' : 'pill warn');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><code>${o.order_id ?? ''}</code></td>
+          <td>${o.client ?? ''}</td>
+          <td><code>${o.sku ?? ''}</code></td>
+          <td>${o.quantity ?? 0}</td>
+          <td><span class='${pillCls}'>${o.status ?? '—'}</span></td>
+          <td>${fmtDate(o.created_at)}</td>
+          <td><button class='btn btn-small' data-order='${encodeURIComponent(JSON.stringify(o._raw || o))}'>Ver</button></td>
+        `;
+        tbody.appendChild(tr);
+      }
+      tbody.querySelectorAll('button[data-order]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const raw = JSON.parse(decodeURIComponent(btn.dataset.order));
+          openOrderDialog(raw);
+        });
+      });
+    }
+
+    function openOrderDialog(order){
+      document.getElementById('orderJson').textContent = JSON.stringify(order, null, 2);
+      const dlg = document.getElementById('orderDialog');
+      if(!dlg.open) dlg.showModal();
+    }
+
+    function closeDialog(){
+      document.getElementById('orderDialog').close();
+    }
+
+    async function refreshAll(){
+      document.getElementById('timestamp').textContent = new Date().toLocaleString();
+      await fetchHealth();
+      await Promise.all([fetchStock(), fetchOrders()]);
+    }
+
+    // === Listeners ===
+    document.getElementById('refreshBtn').addEventListener('click', refreshAll);
+    document.getElementById('closeDialog').addEventListener('click', closeDialog);
+    document.getElementById('stockSearch').addEventListener('input', renderStock);
+    document.getElementById('statusFilter').addEventListener('change', renderOrders);
+
+    // === Auto-refresh ===
+    refreshAll();
+    setInterval(refreshAll, 15000);
+  </script>
+</body>
+</html>
